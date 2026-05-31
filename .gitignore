@@ -1,0 +1,13 @@
+vscode
+.idea
+*.log
+*.tmp
+node_modules
+dist
+build
+coverage
+.env
+.DS_Store
+*.swp
+AGENTS.md
+CLAUDE.md

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>DocScan — Escáner móvil</title>
+<style>
+/* ============================================================
+   DocScan — Escáner móvil · verde esmeralda · archivo único
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --green:#059669; --green-d:#047857; --green-dd:#065f46; --mint:#34d399;
+  --tint:#ecfdf5; --tint2:#d1fae5;
+  --ink:#0f172a; --slate:#475569; --slate-l:#94a3b8; --line:#e9eef0; --paper:#f5f7f7;
+  --shadow:0 10px 30px rgba(15,23,42,.10); --shadow-sm:0 4px 14px rgba(15,23,42,.07);
+  --font:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--font);color:var(--ink);-webkit-font-smoothing:antialiased;
+  background:#dfe5e6;background-image:radial-gradient(circle at 50% 0%,#eef2f3 0%,#d4dcdd 90%);
+  display:flex;align-items:center;justify-content:center;min-height:100dvh;
+}
+.stage{padding:24px}
+.phone{
+  width:390px;height:844px;border-radius:54px;background:#0b1220;padding:13px;position:relative;
+  box-shadow:0 50px 90px rgba(15,23,42,.30),0 0 0 2px rgba(0,0,0,.25),inset 0 0 4px rgba(255,255,255,.1);
+}
+.screen-area{position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:var(--paper)}
+.island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:118px;height:34px;background:#000;border-radius:20px;z-index:120}
+.statusbar{position:absolute;top:0;left:0;right:0;height:54px;z-index:110;display:flex;align-items:center;justify-content:space-between;padding:18px 30px 0;font-size:15px;font-weight:700;pointer-events:none}
+.statusbar.light{color:#fff}
+.statusbar .sb-icons{display:flex;gap:7px;align-items:center}
+.statusbar svg{display:block}
+
+/* responsive: a pantalla completa en móvil, sin desfase */
+@media (max-width:480px){
+  body{background:#0c0f14}
+  .stage{padding:0}
+  .phone{width:100vw;height:100dvh;border-radius:0;padding:0;box-shadow:none}
+  .screen-area{border-radius:0}
+  .island{display:none}
+  .statusbar{padding-top:max(14px,env(safe-area-inset-top))}
+  .bottom-nav{padding-bottom:max(20px,env(safe-area-inset-bottom))}
+  .crop-foot,.pdf-actions{padding-bottom:max(20px,env(safe-area-inset-bottom))}
+  .cam-controls{padding-bottom:max(22px,env(safe-area-inset-bottom))}
+}
+
+/* ---------- pantallas ---------- */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--paper);
+  opacity:0;visibility:hidden;transform:translateX(28px) scale(.99);
+  transition:opacity .32s ease,transform .32s cubic-bezier(.4,0,.2,1),visibility .32s}
+.screen.active{opacity:1;visibility:visible;transform:none;z-index:2}
+.screen.dark{background:#0c0f14}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar,.pdf-body::-webkit-scrollbar{display:none}
+
+/* ---------- HOME ---------- */
+.home-header{background:linear-gradient(155deg,var(--green) 0%,var(--green-d) 55%,var(--green-dd) 100%);
+  padding:62px 22px 58px;border-radius:0 0 30px 30px;color:#fff;position:relative}
+.home-header::after{content:"";position:absolute;right:-40px;top:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07)}
+.hh-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.hh-brand{display:flex;align-items:center;gap:10px}
+.hh-logo{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
+.hh-brand b{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.hh-icons{display:flex;gap:8px}
+.icon-btn{width:38px;height:38px;border-radius:12px;border:none;cursor:pointer;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff;transition:background .2s}
+.icon-btn:active{background:rgba(255,255,255,.3)}
+.hh-greet{margin-top:22px;position:relative;z-index:1}
+.hh-greet h1{font-size:25px;font-weight:800;letter-spacing:-.5px;line-height:1.15}
+.hh-greet p{font-size:13.5px;opacity:.85;margin-top:4px;font-weight:500}
+.search{margin-top:18px;background:rgba(255,255,255,.95);border-radius:15px;display:flex;align-items:center;gap:10px;padding:12px 15px;position:relative;z-index:1;box-shadow:0 8px 20px rgba(4,80,60,.18)}
+.search input{border:none;outline:none;flex:1;font-family:var(--font);font-size:14px;background:none;color:var(--ink)}
+.search input::placeholder{color:var(--slate-l)}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;padding:0 22px;margin-top:-34px;position:relative;z-index:3}
+.qa{background:#fff;border:none;cursor:pointer;border-radius:18px;padding:15px 8px 13px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:var(--shadow-sm);transition:transform .15s ease;font-family:var(--font)}
+.qa:active{transform:translateY(2px) scale(.97)}
+.qa-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.qa-ic.g{background:var(--tint);color:var(--green)}
+.qa-ic.b{background:#e0f2fe;color:#0284c7}
+.qa-ic.v{background:#f3e8ff;color:#7c3aed}
+.qa span{font-size:12px;font-weight:700;color:var(--ink)}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:26px 22px 12px}
+.sec-head h2{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.sec-head a{font-size:13px;font-weight:700;color:var(--green);text-decoration:none;cursor:pointer}
+.doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 22px 24px}
+.doc-card{background:#fff;border-radius:18px;padding:10px;cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .15s ease;border:1px solid #eef2f3}
+.doc-card:active{transform:translateY(2px) scale(.985)}
+.doc-thumb{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1.18;background:#fff;border:1px solid #eef2f3}
+.doc-badge{position:absolute;top:7px;right:7px;background:rgba(15,23,42,.78);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:8px}
+.doc-meta{padding:9px 4px 3px}
+.doc-meta b{display:block;font-size:13px;font-weight:700;letter-spacing:-.2px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-meta small{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-l);margin-top:4px;font-weight:600}
+
+/* página escaneada dibujada en CSS */
+.page{background:#fff;width:100%;height:100%;padding:12% 13%;display:flex;flex-direction:column;gap:6%}
+.page .l{height:4.5%;background:#e2e8ec;border-radius:3px}
+.page .l.t{height:8%;width:62%;background:#cbd5dc;margin-bottom:3%}
+.page .l.s{width:88%}.page .l.m{width:70%}.page .l.x{width:46%}
+.page .accent{height:6%;width:34%;border-radius:3px}
+.page .gap{height:4%}
+.page .block{height:22%;border-radius:5px;background:#eef3f5;margin:3% 0}
+
+/* ---------- BOTTOM NAV ---------- */
+.bottom-nav{position:relative;background:#fff;border-top:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-around;padding:11px 30px 26px;flex-shrink:0}
+.nav-item{background:none;border:none;cursor:pointer;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--slate-l);font-size:10.5px;font-weight:700;flex:1;transition:color .2s}
+.nav-item.active{color:var(--green)}
+.nav-item svg{display:block}
+.nav-fab{width:62px;height:62px;border-radius:21px;flex-shrink:0;margin-top:-34px;cursor:pointer;border:none;
+  background:linear-gradient(150deg,var(--mint),var(--green) 60%,var(--green-d));
+  box-shadow:0 12px 24px rgba(5,150,105,.42),inset 0 1px 1px rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;color:#fff;transition:transform .18s ease}
+.nav-fab:active{transform:scale(.92)}
+
+/* ---------- CAMERA ---------- */
+.cam-top{position:absolute;top:0;left:0;right:0;z-index:20;padding:58px 20px 0;display:flex;align-items:center;justify-content:space-between;color:#fff}
+.cam-top .ttl{font-size:15px;font-weight:700}
+.round-btn{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;color:#fff;transition:background .2s}
+.round-btn:active{background:rgba(255,255,255,.3)}
+.viewfinder{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:radial-gradient(circle at 50% 38%,#2b3340 0%,#14181f 60%,#0a0d12 100%)}
+.scan-doc{width:62%;aspect-ratio:1/1.32;transform:rotate(-3deg);border-radius:6px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.55);position:relative}
+.detect{position:absolute;width:70%;aspect-ratio:1/1.34;transform:rotate(-3deg);pointer-events:none;animation:breathe 2.4s ease-in-out infinite}
+.detect .corner{position:absolute;width:26px;height:26px;border:3.5px solid var(--mint);filter:drop-shadow(0 0 6px rgba(52,211,153,.7))}
+.detect .c-tl{top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
+.detect .c-tr{top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
+.detect .c-bl{bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 8px}
+.detect .c-br{bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 8px 0}
+.detect .scanline{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--mint),transparent);box-shadow:0 0 16px 3px rgba(52,211,153,.6);animation:scan 2.6s ease-in-out infinite}
+@keyframes scan{0%{top:4%}50%{top:94%}100%{top:4%}}
+@keyframes breathe{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(-3deg) scale(1.012)}}
+.detect-tag{position:absolute;top:-30px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--green);color:#fff;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;display:flex;align-items:center;gap:5px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.cam-hint{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;font-size:12px;font-weight:600;padding:8px 16px;border-radius:30px;display:flex;align-items:center;gap:7px;white-space:nowrap;max-width:90%}
+.cam-controls{background:#0c0f14;padding:18px 0 30px;flex-shrink:0}
+.modes{display:flex;gap:22px;justify-content:center;margin-bottom:20px;overflow-x:auto;padding:0 24px}
+.modes::-webkit-scrollbar{display:none}
+.mode{background:none;border:none;cursor:pointer;font-family:var(--font);color:rgba(255,255,255,.5);font-size:13px;font-weight:700;white-space:nowrap;transition:color .2s;position:relative;padding-bottom:6px}
+.mode.active{color:var(--mint)}
+.mode.active::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--mint)}
+.shutter-row{display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+/* pila de páginas capturadas */
+.stack-btn{position:relative;width:52px;height:52px;border:none;cursor:pointer;background:none;padding:0;display:flex;align-items:center;justify-content:center}
+.stack-empty{width:48px;height:48px;border-radius:13px;border:2px solid rgba(255,255,255,.3);background:#1a1f28;display:flex;align-items:center;justify-content:center;color:#fff}
+.stack-mini{display:none;width:46px;height:54px;border-radius:8px;overflow:hidden;border:2px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.4),4px -4px 0 -1px rgba(255,255,255,.4),7px -7px 0 -2px rgba(255,255,255,.25)}
+.stack-btn.has .stack-empty{display:none}
+.stack-btn.has .stack-mini{display:block}
+.stack-badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:var(--green);color:#fff;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid #0c0f14}
+.stack-btn.has .stack-badge{display:flex}
+.shutter{width:74px;height:74px;border-radius:50%;border:5px solid rgba(255,255,255,.85);cursor:pointer;background:#fff;padding:4px;transition:transform .12s ease;position:relative}
+.shutter:active{transform:scale(.9)}
+.shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:background .15s}
+.shutter.flash span{background:var(--mint)}
+.done-btn{min-width:52px;height:52px;padding:0 14px;border-radius:14px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:800;
+  background:rgba(255,255,255,.12);color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;gap:5px;transition:all .2s}
+.done-btn.ready{background:linear-gradient(150deg,var(--mint),var(--green));color:#fff;box-shadow:0 8px 18px rgba(5,150,105,.4)}
+.flash-overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:60}
+.flash-overlay.go{animation:flashfx .4s ease}
+@keyframes flashfx{0%{opacity:0}20%{opacity:.9}100%{opacity:0}}
+
+/* ---------- CROP ---------- */
+.crop-head,.pdf-head{display:flex;align-items:center;justify-content:space-between;padding:58px 18px 14px;flex-shrink:0}
+.crop-head{background:#0c0f14;color:#fff}
+.crop-head .ttl{font-size:16px;font-weight:700}
+.txt-btn{background:none;border:none;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:700;color:var(--mint);padding:6px}
+.crop-stage{flex:1;background:#0c0f14;display:flex;align-items:center;justify-content:center;position:relative;padding:10px 28px}
+.crop-img{position:relative;width:100%;max-width:280px;aspect-ratio:1/1.3;border-radius:4px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.crop-overlay{position:absolute;inset:8px;pointer-events:none}
+.crop-overlay .frame{position:absolute;inset:0;border:2px solid var(--mint);border-radius:2px}
+.crop-overlay .grid-l{position:absolute;background:rgba(52,211,153,.4)}
+.crop-overlay .gh1{left:0;right:0;top:33.3%;height:1px}.crop-overlay .gh2{left:0;right:0;top:66.6%;height:1px}
+.crop-overlay .gv1{top:0;bottom:0;left:33.3%;width:1px}.crop-overlay .gv2{top:0;bottom:0;left:66.6%;width:1px}
+.crop-overlay .h{position:absolute;width:16px;height:16px;background:var(--mint);border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.crop-overlay .h-tl{top:-8px;left:-8px}.crop-overlay .h-tr{top:-8px;right:-8px}.crop-overlay .h-bl{bottom:-8px;left:-8px}.crop-overlay .h-br{bottom:-8px;right:-8px}
+.crop-count-badge{position:absolute;top:18px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;z-index:5}
+.pager-arrow{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;z-index:5}
+.pager-arrow:active{background:rgba(255,255,255,.3)}
+.pager-arrow.left{left:14px}.pager-arrow.right{right:14px}
+.pager-arrow[disabled]{opacity:0;pointer-events:none}
+.crop-tools{display:flex;justify-content:center;gap:14px;padding:14px 0;background:#0c0f14;flex-shrink:0}
+.tool{background:rgba(255,255,255,.1);border:none;cursor:pointer;color:#fff;font-family:var(--font);border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;transition:background .2s}
+.tool:active{background:rgba(255,255,255,.25)}
+.filters{display:flex;gap:13px;padding:14px 22px;background:#11151b;overflow-x:auto;flex-shrink:0}
+.filters::-webkit-scrollbar{display:none}
+.filt{background:none;border:none;cursor:pointer;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0}
+.filt-th{width:50px;height:62px;border-radius:9px;overflow:hidden;border:2.5px solid transparent;transition:border .2s}
+.filt.active .filt-th{border-color:var(--mint)}
+.filt span{font-size:11px;font-weight:700;color:rgba(255,255,255,.55)}
+.filt.active span{color:var(--mint)}
+.crop-foot{background:#0c0f14;padding:14px 22px 30px;flex-shrink:0}
+.btn-primary{width:100%;border:none;cursor:pointer;font-family:var(--font);background:linear-gradient(150deg,var(--mint),var(--green) 55%,var(--green-d));color:#fff;font-size:15.5px;font-weight:800;padding:16px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 10px 24px rgba(5,150,105,.4);transition:transform .15s ease,filter .2s}
+.btn-primary:active{transform:translateY(2px) scale(.99);filter:brightness(.96)}
+.fx-auto{filter:contrast(1.06) saturate(1.05)}
+.fx-magic{filter:contrast(1.2) brightness(1.07) saturate(1.12)}
+.fx-gray{filter:grayscale(1) contrast(1.05)}
+.fx-bw{filter:grayscale(1) contrast(1.9) brightness(1.08)}
+.fx-orig{filter:none}
+
+/* ---------- PDF ---------- */
+.pdf-head{background:#fff;border-bottom:1px solid var(--line)}
+.pdf-name{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pdf-name b{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.pdf-name small{font-size:11px;color:var(--slate-l);font-weight:600}
+.pdf-body{flex:1;overflow-y:auto;background:#e7ecec;padding:22px 30px}
+.pdf-info{display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.pill{background:#fff;border:1px solid var(--line);border-radius:30px;padding:6px 13px;font-size:11.5px;font-weight:700;color:var(--slate);display:flex;align-items:center;gap:6px}
+.pdf-page{background:#fff;border-radius:6px;box-shadow:0 14px 34px rgba(15,23,42,.16);aspect-ratio:1/1.35;overflow:hidden;margin-bottom:16px;position:relative}
+.pdf-page .pnum{position:absolute;bottom:8px;right:10px;background:rgba(15,23,42,.6);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.pdf-thumbs{display:flex;gap:10px;padding:14px 22px;background:#fff;border-top:1px solid var(--line);overflow-x:auto;flex-shrink:0}
+.pdf-thumbs::-webkit-scrollbar{display:none}
+.pthumb{width:46px;height:60px;border-radius:7px;overflow:hidden;border:2px solid var(--green);flex-shrink:0;position:relative}
+.pthumb .num{position:absolute;bottom:0;left:0;right:0;background:var(--green);color:#fff;font-size:9px;font-weight:700;text-align:center;padding:1px}
+.pthumb.add{border:2px dashed var(--slate-l);display:flex;align-items:center;justify-content:center;color:var(--slate-l);background:var(--paper);cursor:pointer}
+.pdf-actions{background:#fff;padding:12px 22px 30px;border-top:1px solid var(--line);flex-shrink:0;display:flex;gap:10px;align-items:center}
+.act-secondary{display:flex;gap:8px}
+.act-ic{width:50px;height:50px;border-radius:15px;border:1.5px solid var(--line);background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--slate);font-family:var(--font);font-size:8.5px;font-weight:700;transition:background .2s}
+.act-ic:active{background:var(--paper)}
+.btn-share{flex:1;border:none;cursor:pointer;font-family:var(--font);background:linear-gradient(150deg,var(--mint),var(--green) 55%,var(--green-d));color:#fff;font-size:15px;font-weight:800;padding:15px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 10px 22px rgba(5,150,105,.38);transition:transform .15s ease}
+.btn-share:active{transform:scale(.98)}
+
+/* ---------- SHARE SHEET + TOAST ---------- */
+.sheet-scrim{position:absolute;inset:0;background:rgba(15,23,42,.45);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;z-index:200}
+.sheet-scrim.open{opacity:1;visibility:visible}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:10px 22px 32px;transform:translateY(100%);transition:transform .36s cubic-bezier(.3,.9,.3,1);z-index:201}
+.sheet-scrim.open .sheet{transform:none}
+.sheet-grab{width:40px;height:5px;border-radius:3px;background:#dfe5e6;margin:6px auto 16px}
+.sheet-success{display:flex;align-items:center;gap:12px;background:var(--tint);border-radius:16px;padding:13px 15px;margin-bottom:18px}
+.sheet-success .ok{width:38px;height:38px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.sheet-success b{font-size:14px;font-weight:700;display:block}
+.sheet-success small{font-size:12px;color:var(--slate);font-weight:600}
+.share-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px}
+.share-t{background:none;border:none;cursor:pointer;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:8px}
+.share-ic{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:var(--shadow-sm);transition:transform .15s}
+.share-t:active .share-ic{transform:scale(.92)}
+.share-t span{font-size:11.5px;font-weight:700;color:var(--slate)}
+.toast{position:absolute;bottom:120px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:12px 20px;border-radius:30px;display:flex;align-items:center;gap:9px;white-space:nowrap;z-index:300;opacity:0;visibility:hidden;transition:opacity .3s,transform .3s,visibility .3s;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.toast.show{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.toast .tdot{color:var(--mint);display:flex}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="island"></div>
+    <div class="statusbar light" id="statusbar">
+      <span>9:41</span>
+      <span class="sb-icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx=".6"/><rect x="4.5" y="4.5" width="3" height="7.5" rx=".6"/><rect x="9" y="2" width="3" height="10" rx=".6"/><rect x="13.5" y="0" width="3" height="12" rx=".6"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 3c2 0 3.8.8 5.2 2.1l1-1A9 9 0 0 0 8 1.3 9 9 0 0 0 1.8 4.1l1 1A7.3 7.3 0 0 1 8 3Z"/><path d="M8 6.4c1.1 0 2.1.4 2.9 1.2l1-1A6 6 0 0 0 8 4.8a6 6 0 0 0-3.9 1.8l1 1A4.1 4.1 0 0 1 8 6.4Z"/><circle cx="8" cy="9.6" r="1.4"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="3" stroke="currentColor" stroke-opacity=".4"/><rect x="2" y="2" width="18" height="8" rx="1.6" fill="currentColor"/><path d="M23 4v4c.7-.3 1.2-1 1.2-2S23.7 4.3 23 4Z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span>
+    </div>
+
+    <div class="screen-area">
+
+      <!-- HOME -->
+      <section class="screen active" id="screen-home" data-screen-label="Inicio">
+        <div class="scroll">
+          <header class="home-header">
+            <div class="hh-top">
+              <div class="hh-brand">
+                <span class="hh-logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 12h8"/></svg></span>
+                <b>DocScan</b>
+              </div>
+              <div class="hh-icons">
+                <button class="icon-btn" id="bell" aria-label="Notificaciones"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+              </div>
+            </div>
+            <div class="hh-greet">
+              <h1>Escanea lo que sea,<br>al instante</h1>
+              <p>Toca el botón verde para empezar a escanear</p>
+            </div>
+            <label class="search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input placeholder="Buscar documentos…" />
+            </label>
+          </header>
+
+          <div class="quick">
+            <button class="qa" data-scan="Documento">
+              <span class="qa-ic g"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+              <span>Escanear</span>
+            </button>
+            <button class="qa" data-scan="Galería">
+              <span class="qa-ic b"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.8"/><path d="m21 15-5-5L5 21"/></svg></span>
+              <span>Importar</span>
+            </button>
+            <button class="qa" data-scan="Documento">
+              <span class="qa-ic v"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></span>
+              <span>Crear PDF</span>
+            </button>
+          </div>
+
+          <div class="sec-head"><h2>Recientes</h2><a id="see-all">Ver todo</a></div>
+          <div class="doc-grid" id="doc-grid"></div>
+        </div>
+
+        <nav class="bottom-nav">
+          <button class="nav-item active" data-nav="home">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Inicio
+          </button>
+          <button class="nav-fab" id="fab" aria-label="Escanear">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.6"/></svg>
+          </button>
+          <button class="nav-item" data-nav="files">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Archivos
+          </button>
+        </nav>
+      </section>
+
+      <!-- CAMERA -->
+      <section class="screen dark" id="screen-camera" data-screen-label="Cámara">
+        <div class="cam-top">
+          <button class="round-btn" data-go="home" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+          <span class="ttl" id="cam-mode-title">Documento</span>
+          <button class="round-btn" id="flash-toggle" aria-label="Flash"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg></button>
+        </div>
+        <div class="viewfinder">
+          <div class="scan-doc"><div class="page" id="cam-page"></div></div>
+          <div class="detect">
+            <span class="detect-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Documento detectado</span>
+            <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+            <span class="scanline"></span>
+          </div>
+          <div class="cam-hint" id="cam-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Z"/><path d="M9 21h6"/></svg><span id="cam-hint-text">Toca el obturador para capturar cada hoja</span></div>
+          <div class="flash-overlay" id="flash-overlay"></div>
+        </div>
+        <div class="cam-controls">
+          <div class="modes" id="modes">
+            <button class="mode active">Documento</button>
+            <button class="mode">Tarjeta ID</button>
+            <button class="mode">Libro</button>
+            <button class="mode">Pizarra</button>
+          </div>
+          <div class="shutter-row">
+            <button class="stack-btn" id="stack-btn" aria-label="Páginas capturadas">
+              <span class="stack-empty"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.8"/><path d="m21 15-5-5L5 21"/></svg></span>
+              <span class="stack-mini"><span class="page" id="stack-page"></span></span>
+              <span class="stack-badge" id="stack-badge">0</span>
+            </button>
+            <button class="shutter" id="shutter"><span></span></button>
+            <button class="done-btn" id="cam-done">Listo</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CROP -->
+      <section class="screen dark" id="screen-crop" data-screen-label="Recorte">
+        <div class="crop-head">
+          <button class="round-btn" data-go="camera" aria-label="Atrás"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg></button>
+          <span class="ttl">Recortar y ajustar</span>
+          <button class="txt-btn" data-go="camera">Repetir</button>
+        </div>
+        <div class="crop-stage">
+          <span class="crop-count-badge" id="crop-count">Página 1 de 1</span>
+          <button class="pager-arrow left" id="crop-prev" aria-label="Anterior">‹</button>
+          <div class="crop-img">
+            <div class="page fx-magic" id="crop-page"></div>
+            <div class="crop-overlay">
+              <span class="frame"></span>
+              <span class="grid-l gh1"></span><span class="grid-l gh2"></span><span class="grid-l gv1"></span><span class="grid-l gv2"></span>
+              <span class="h h-tl"></span><span class="h h-tr"></span><span class="h h-bl"></span><span class="h h-br"></span>
+            </div>
+          </div>
+          <button class="pager-arrow right" id="crop-next" aria-label="Siguiente">›</button>
+        </div>
+        <div class="crop-tools">
+          <button class="tool" id="autodetect"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>Auto-detectar</button>
+          <button class="tool" id="rotate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>Girar</button>
+        </div>
+        <div class="filters" id="filters"></div>
+        <div class="crop-foot">
+          <button class="btn-primary" id="to-pdf">Crear PDF<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </div>
+      </section>
+
+      <!-- PDF -->
+      <section class="screen" id="screen-pdf" data-screen-label="PDF">
+        <div class="pdf-head">
+          <button class="round-btn" data-go="crop" aria-label="Atrás" style="background:#f1f5f4;color:#0f172a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg></button>
+          <div class="pdf-name"><b id="pdf-title">Escaneo_30may.pdf</b><small id="pdf-sub">PDF · 1 página · 480 KB</small></div>
+          <button class="round-btn" aria-label="Más" style="background:#f1f5f4;color:#0f172a"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        <div class="pdf-body" id="pdf-body"></div>
+        <div class="pdf-thumbs" id="pdf-thumbs"></div>
+        <div class="pdf-actions">
+          <div class="act-secondary">
+            <button class="act-ic" id="ocr-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 12h8"/></svg>OCR</button>
+            <button class="act-ic" id="save-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Guardar</button>
+          </div>
+          <button class="btn-share" id="open-share"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>Compartir</button>
+        </div>
+      </section>
+
+      <!-- SHARE SHEET -->
+      <div class="sheet-scrim" id="share-scrim">
+        <div class="sheet">
+          <div class="sheet-grab"></div>
+          <div class="sheet-success">
+            <span class="ok"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div><b>¡PDF creado!</b><small id="sheet-sub">Escaneo_30may.pdf · listo para compartir</small></div>
+          </div>
+          <div class="share-grid" id="share-grid"></div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"><span class="tdot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span id="toast-msg">Hecho</span></div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== datos ===================== */
+const DOCS = [
+  { title:'Contrato de arrendamiento', date:'Hoy, 14:32', pages:4, kind:'contract' },
+  { title:'Factura — Marzo 2026',      date:'Ayer, 09:10', pages:1, kind:'invoice'  },
+  { title:'Notas de la reunión',       date:'28 may',      pages:2, kind:'notes'    },
+  { title:'Recibo de servicios',       date:'26 may',      pages:1, kind:'receipt'  },
+  { title:'Identificación oficial',    date:'24 may',      pages:1, kind:'id'       },
+  { title:'Tarea de matemáticas',      date:'22 may',      pages:3, kind:'notes'    },
+];
+const SHARE_TARGETS = [
+  { label:'WhatsApp', color:'#25D366', glyph:'message' },
+  { label:'Correo',   color:'#0ea5e9', glyph:'mail'    },
+  { label:'Drive',    color:'#f59e0b', glyph:'cloud'   },
+  { label:'Imprimir', color:'#64748b', glyph:'print'   },
+  { label:'Enlace',   color:'#8b5cf6', glyph:'link'    },
+  { label:'Más',      color:'#94a3b8', glyph:'more'    },
+];
+const FILTERS = [
+  { id:'auto',  label:'Auto',     fx:'fx-auto'  },
+  { id:'magic', label:'Mejora',   fx:'fx-magic' },
+  { id:'gray',  label:'Gris',     fx:'fx-gray'  },
+  { id:'bw',    label:'B/N',      fx:'fx-bw'    },
+  { id:'orig',  label:'Original', fx:'fx-orig'  },
+];
+const GLYPHS = {
+  message:'<path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-5.9A8.4 8.4 0 1 1 21 11.5Z"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>',
+  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1A4 4 0 0 0 6.5 19Z"/>',
+  print:'<path d="M6 9V3h12v6"/><rect x="6" y="13" width="12" height="8"/><path d="M6 17H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+};
+const SCAN_KINDS = ['contract','invoice','notes','receipt','id'];
+
+/* ===================== helpers ===================== */
+const $  = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+
+function pageHTML(kind){
+  const L=(c='')=>`<div class="l ${c}"></div>`;
+  switch(kind){
+    case 'invoice': return `${L('t')}<div class="accent" style="background:#bfdbfe"></div><div class="gap"></div>${L('s')}${L('m')}<div class="block"></div>${L('s')}${L('x')}`;
+    case 'notes':   return `${L('t')}${L('s')}${L('m')}${L('s')}${L('x')}${L('m')}${L('s')}${L('x')}`;
+    case 'receipt': return `<div class="accent" style="width:46%;margin:0 auto;background:#cbd5dc"></div><div class="gap"></div>${L('s')}${L('m')}${L('s')}${L('x')}${L('m')}${L('s')}`;
+    case 'id':      return `${L('t')}<div class="block" style="height:30%;background:#dbe7ec"></div>${L('m')}${L('x')}${L('s')}`;
+    default:        return `${L('t')}<div class="accent" style="background:#a7f3d0"></div><div class="gap"></div>${L('s')}${L('m')}${L('s')}${L('s')}${L('x')}${L('m')}${L('s')}`;
+  }
+}
+function sizeOf(n){ return n===1 ? '480 KB' : (n*0.42).toFixed(1).replace('.',',')+' MB'; }
+
+/* ===================== estado ===================== */
+let current='home';
+let scanPages=[];        // páginas capturadas en esta sesión (un PDF)
+let cropIdx=0;           // página mostrada en recorte
+let filterFx='fx-magic'; // filtro aplicado al PDF
+const DARK_BARS={home:true,camera:true,crop:true,pdf:false};
+
+/* ===================== navegación ===================== */
+function navigate(name){
+  if(name===current) return;
+  $$('.screen').forEach(s=>s.classList.remove('active'));
+  $('#screen-'+name).classList.add('active');
+  $('#statusbar').classList.toggle('light',DARK_BARS[name]);
+  const sc=$('#screen-'+name+' .scroll')||$('#screen-'+name+' .pdf-body');
+  if(sc) sc.scrollTop=0;
+  current=name;
+}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));
+
+/* ===================== iniciar escaneo ===================== */
+function startScan(mode){
+  scanPages=[];
+  if(mode){ $('#cam-mode-title').textContent=mode; $$('#modes .mode').forEach(m=>m.classList.toggle('active',m.textContent===mode)); }
+  $('#cam-page').innerHTML=pageHTML('contract');
+  updateStack();
+  navigate('camera');
+}
+$('#fab').addEventListener('click',()=>startScan('Documento'));
+$$('[data-scan]').forEach(b=>b.addEventListener('click',()=>startScan(b.dataset.scan)));
+
+/* ===================== HOME render ===================== */
+function renderDocs(){
+  $('#doc-grid').innerHTML=DOCS.map((d,i)=>`
+    <div class="doc-card" data-i="${i}">
+      <div class="doc-thumb"><div class="page">${pageHTML(d.kind)}</div><span class="doc-badge">${d.pages} pág</span></div>
+      <div class="doc-meta"><b>${d.title}</b><small><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${d.date}</small></div>
+    </div>`).join('');
+  $$('.doc-card').forEach(c=>c.addEventListener('click',()=>{
+    const d=DOCS[c.dataset.i];
+    scanPages=Array.from({length:d.pages},()=>d.kind);
+    filterFx='fx-magic';
+    renderPdf(d.title.replace(/[^\wáéíóúñ]+/gi,'_')+'.pdf');
+    navigate('pdf');
+  }));
+}
+
+/* ===================== CÁMARA: captura múltiple ===================== */
+function updateStack(){
+  const n=scanPages.length;
+  const btn=$('#stack-btn');
+  btn.classList.toggle('has',n>0);
+  $('#stack-badge').textContent=n;
+  if(n>0) $('#stack-page').innerHTML=pageHTML(scanPages[n-1]);
+  const done=$('#cam-done');
+  done.classList.toggle('ready',n>0);
+  done.textContent = n>0 ? 'Listo · '+n : 'Listo';
+  $('#cam-hint-text').textContent = n>0
+    ? n+' hoja(s) capturada(s) · sigue tomando o pulsa Listo'
+    : 'Toca el obturador para capturar cada hoja';
+}
+$('#shutter').addEventListener('click',()=>{
+  const sh=$('#shutter'), ov=$('#flash-overlay');
+  sh.classList.add('flash');
+  ov.classList.remove('go'); void ov.offsetWidth; ov.classList.add('go');
+  scanPages.push(SCAN_KINDS[scanPages.length % SCAN_KINDS.length]);
+  setTimeout(()=>{ sh.classList.remove('flash'); updateStack(); toast('Hoja '+scanPages.length+' añadida'); },360);
+});
+function finishScan(){
+  if(scanPages.length===0){ toast('Captura al menos una hoja'); return; }
+  cropIdx=0; filterFx='fx-magic';
+  renderCrop();
+  navigate('crop');
+}
+$('#cam-done').addEventListener('click',finishScan);
+$('#stack-btn').addEventListener('click',finishScan);
+
+let flashOn=false;
+$('#flash-toggle').addEventListener('click',e=>{
+  flashOn=!flashOn;
+  e.currentTarget.style.background=flashOn?'#34d399':'';
+  e.currentTarget.style.color=flashOn?'#062b1f':'#fff';
+  toast(flashOn?'Flash activado':'Flash desactivado');
+});
+$$('#modes .mode').forEach(m=>m.addEventListener('click',()=>{
+  $$('#modes .mode').forEach(x=>x.classList.remove('active')); m.classList.add('active');
+  $('#cam-mode-title').textContent=m.textContent;
+}));
+
+/* ===================== RECORTE ===================== */
+function renderCrop(){
+  const n=scanPages.length||1;
+  const kind=scanPages[cropIdx]||'contract';
+  const page=$('#crop-page');
+  page.className='page '+filterFx;
+  page.innerHTML=pageHTML(kind);
+  page.style.transform='';
+  $('#crop-count').textContent='Página '+(cropIdx+1)+' de '+n;
+  $('#crop-prev').toggleAttribute('disabled',cropIdx===0);
+  $('#crop-next').toggleAttribute('disabled',cropIdx>=n-1);
+  $('#to-pdf').innerHTML = (n>1?'Crear PDF · '+n+' págs':'Crear PDF')+'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+}
+$('#crop-prev').addEventListener('click',()=>{ if(cropIdx>0){cropIdx--;renderCrop();} });
+$('#crop-next').addEventListener('click',()=>{ if(cropIdx<scanPages.length-1){cropIdx++;renderCrop();} });
+$('#rotate').addEventListener('click',()=>{
+  const p=$('#crop-page'); const cur=p.dataset.rot?+p.dataset.rot:0; const next=(cur-90)%360;
+  p.dataset.rot=next; p.style.transform='rotate('+next+'deg)';
+});
+$('#autodetect').addEventListener('click',()=>{ $('.crop-overlay').animate([{opacity:.3},{opacity:1}],{duration:450}); toast('Bordes detectados'); });
+
+function renderFilters(){
+  $('#filters').innerHTML=FILTERS.map(f=>`
+    <button class="filt ${f.fx===filterFx?'active':''}" data-fx="${f.fx}">
+      <span class="filt-th"><div class="page ${f.fx}">${pageHTML('contract')}</div></span><span>${f.label}</span>
+    </button>`).join('');
+  $$('.filt').forEach(b=>b.addEventListener('click',()=>{
+    $$('.filt').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+    filterFx=b.dataset.fx; renderCrop();
+  }));
+}
+$('#to-pdf').addEventListener('click',()=>{ renderPdf(); navigate('pdf'); });
+
+/* ===================== PDF ===================== */
+function renderPdf(name){
+  const pages = scanPages.length?scanPages:['contract'];
+  const n=pages.length;
+  const title=name||'Escaneo_30may.pdf';
+  $('#pdf-title').textContent=title;
+  $('#pdf-sub').textContent='PDF · '+n+(n===1?' página · ':' páginas · ')+sizeOf(n);
+  $('#sheet-sub').textContent=title+' · listo para compartir';
+  // cuerpo
+  $('#pdf-body').innerHTML=
+    `<div class="pdf-info"><span class="pill"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Recorte aplicado</span><span class="pill"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>${n} hoja(s) en 1 archivo</span></div>`
+    + pages.map((k,i)=>`<div class="pdf-page"><div class="page ${filterFx}">${pageHTML(k)}</div><span class="pnum">${i+1} / ${n}</span></div>`).join('');
+  // miniaturas
+  $('#pdf-thumbs').innerHTML = pages.map((k,i)=>`<div class="pthumb"><div class="page ${filterFx}">${pageHTML(k)}</div><span class="num">${i+1}</span></div>`).join('')
+    + `<button class="pthumb add" id="add-page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>`;
+  $('#add-page').addEventListener('click',()=>{ navigate('camera'); toast('Añade más hojas a este PDF'); });
+}
+$('#ocr-btn').addEventListener('click',()=>toast('Texto reconocido (OCR)'));
+$('#save-btn').addEventListener('click',()=>toast('Guardado en Mis documentos'));
+
+/* ===================== compartir ===================== */
+function renderShare(){
+  $('#share-grid').innerHTML=SHARE_TARGETS.map(t=>`
+    <button class="share-t" data-label="${t.label}"><span class="share-ic" style="background:${t.color}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${GLYPHS[t.glyph]}</svg></span><span>${t.label}</span></button>`).join('');
+  $$('.share-t').forEach(b=>b.addEventListener('click',()=>{ $('#share-scrim').classList.remove('open'); toast('Enviado por '+b.dataset.label); }));
+}
+$('#open-share').addEventListener('click',()=>$('#share-scrim').classList.add('open'));
+$('#share-scrim').addEventListener('click',e=>{ if(e.target.id==='share-scrim') $('#share-scrim').classList.remove('open'); });
+
+/* ===================== nav + extras ===================== */
+$$('.nav-item').forEach(n=>n.addEventListener('click',()=>{
+  $$('.nav-item').forEach(x=>x.classList.remove('active')); n.classList.add('active');
+  if(n.dataset.nav!=='home') toast('Mostrando tus archivos');
+}));
+$('#see-all').addEventListener('click',()=>toast('Mostrando todos los documentos'));
+$('#bell').addEventListener('click',()=>toast('Sin notificaciones nuevas'));
+
+/* ===================== toast ===================== */
+let toastTimer;
+function toast(msg){
+  $('#toast-msg').textContent=msg;
+  const t=$('#toast'); t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ===================== init ===================== */
+renderDocs(); renderFilters(); renderShare(); renderPdf(); updateStack();
+</script>
+</body>
+</html>
