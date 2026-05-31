@@ -347,20 +347,20 @@ class _FilterStrip extends StatelessWidget {
 
     return Container(
       color: AppColors.dark2,
-      height: 100,
+      height: 110,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
         children: FilterOption.all.map((f) {
           final active = f.type == current;
           return GestureDetector(
             onTap: () => context.read<ScanViewModel>().setFilter(f.type),
             child: Padding(
               padding: const EdgeInsets.only(right: 13),
-              child: Column(children: [
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 50, height: 62,
+                  width: 48, height: 60,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(

@@ -212,8 +212,8 @@ class _PdfPage extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: Container(
-              color: Colors.white,
               decoration: BoxDecoration(
+                color: Colors.white,
                 boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.16), blurRadius: 34, offset: const Offset(0, 14))],
               ),
               child: content,
