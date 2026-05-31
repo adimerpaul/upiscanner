@@ -3,7 +3,8 @@ class Document {
   final String title;
   final String date;
   final int pages;
-  final String kind; // contract | invoice | notes | receipt | id
+  final String kind;
+  final String? pdfPath;
 
   const Document({
     required this.id,
@@ -11,5 +12,6 @@ class Document {
     required this.date,
     required this.pages,
     required this.kind,
+    this.pdfPath,
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cunning_document_scanner/cunning_document_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../core/app_colors.dart';
 import '../viewmodels/scan_vm.dart';
@@ -40,23 +42,16 @@ class _CamTopBar extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 0),
-      child: Row(
-        children: [
-          _RoundBtn(
-            icon: Icons.close_rounded,
-            onTap: () => Navigator.pop(context),
+      child: Row(children: [
+        _RoundBtn(icon: Icons.close_rounded, onTap: () => Navigator.pop(context)),
+        Expanded(
+          child: Center(
+            child: Text(vm.mode,
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
           ),
-          Expanded(
-            child: Center(
-              child: Text(
-                vm.mode,
-                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          _FlashBtn(),
-        ],
-      ),
+        ),
+        _FlashBtn(),
+      ]),
     );
   }
 }
@@ -89,26 +84,23 @@ class _FlashBtn extends StatelessWidget {
 class _RoundBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-
   const _RoundBtn({required this.icon, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42, height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.14),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 42, height: 42,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.14),
       ),
-    );
-  }
+      child: Icon(icon, color: Colors.white, size: 20),
+    ),
+  );
 }
 
-// ─── Viewfinder ───────────────────────────────────────────────────────────────
+// ─── Viewfinder (decorativo) ──────────────────────────────────────────────────
 
 class _Viewfinder extends StatefulWidget {
   const _Viewfinder();
@@ -126,10 +118,8 @@ class _ViewfinderState extends State<_Viewfinder> with TickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _scanCtrl = AnimationController(duration: const Duration(milliseconds: 2600), vsync: this)
-      ..repeat(reverse: true);
-    _breatheCtrl = AnimationController(duration: const Duration(milliseconds: 2400), vsync: this)
-      ..repeat(reverse: true);
+    _scanCtrl    = AnimationController(duration: const Duration(milliseconds: 2600), vsync: this)..repeat(reverse: true);
+    _breatheCtrl = AnimationController(duration: const Duration(milliseconds: 2400), vsync: this)..repeat(reverse: true);
     _scanAnim    = Tween<double>(begin: 0.04, end: 0.94).animate(CurvedAnimation(parent: _scanCtrl,    curve: Curves.easeInOut));
     _breatheAnim = Tween<double>(begin: 1.00, end: 1.012).animate(CurvedAnimation(parent: _breatheCtrl, curve: Curves.easeInOut));
   }
@@ -157,7 +147,7 @@ class _ViewfinderState extends State<_Viewfinder> with TickerProviderStateMixin 
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Document preview
+            // Document preview (decorativo)
             Transform.rotate(
               angle: -0.0524,
               child: SizedBox(
@@ -176,7 +166,7 @@ class _ViewfinderState extends State<_Viewfinder> with TickerProviderStateMixin 
               ),
             ),
 
-            // Detection overlay (breathe animation)
+            // Detection overlay (breathe)
             AnimatedBuilder(
               animation: _breatheAnim,
               builder: (c, child) => Transform.scale(
@@ -194,7 +184,7 @@ class _ViewfinderState extends State<_Viewfinder> with TickerProviderStateMixin 
               ),
             ),
 
-            // Hint at bottom
+            // Hint
             Positioned(
               bottom: 22,
               child: _CamHint(),
@@ -212,12 +202,11 @@ class _DetectOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (_, c) {
+    return LayoutBuilder(builder: (ctx, c) {
       final h = c.maxHeight;
       return Stack(
         clipBehavior: Clip.none,
         children: [
-          // "Documento detectado" badge
           Positioned(
             top: -30, left: 0, right: 0,
             child: Center(
@@ -228,22 +217,16 @@ class _DetectOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12)],
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_rounded, color: Colors.white, size: 12),
-                    SizedBox(width: 5),
-                    Text('Documento detectado', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-                  ],
-                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.check_rounded, color: Colors.white, size: 12),
+                  SizedBox(width: 5),
+                  Text('Documento detectado',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ]),
               ),
             ),
           ),
-
-          // Corners
-          ..._cornerWidgets(),
-
-          // Scan line
+          ..._corners(),
           AnimatedBuilder(
             animation: scanAnim,
             builder: (c, child) => Positioned(
@@ -252,9 +235,7 @@ class _DetectOverlay extends StatelessWidget {
               child: Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.transparent, AppColors.mint, Colors.transparent],
-                  ),
+                  gradient: const LinearGradient(colors: [Colors.transparent, AppColors.mint, Colors.transparent]),
                   boxShadow: [BoxShadow(color: AppColors.mint.withValues(alpha: 0.6), blurRadius: 16, spreadRadius: 3)],
                 ),
               ),
@@ -265,33 +246,26 @@ class _DetectOverlay extends StatelessWidget {
     });
   }
 
-  static List<Widget> _cornerWidgets() {
-    const size   = 26.0;
-    const bWidth = 3.5;
-    const color  = AppColors.mint;
-    const r      = Radius.circular(8);
-
-    Widget corner(AlignmentGeometry alignment, BorderRadius radius) => Align(
-      alignment: alignment,
-      child: Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          border: Border(
-            top:    alignment == Alignment.topLeft    || alignment == Alignment.topRight    ? const BorderSide(color: color, width: bWidth) : BorderSide.none,
-            left:   alignment == Alignment.topLeft    || alignment == Alignment.bottomLeft  ? const BorderSide(color: color, width: bWidth) : BorderSide.none,
-            bottom: alignment == Alignment.bottomLeft || alignment == Alignment.bottomRight ? const BorderSide(color: color, width: bWidth) : BorderSide.none,
-            right:  alignment == Alignment.topRight   || alignment == Alignment.bottomRight ? const BorderSide(color: color, width: bWidth) : BorderSide.none,
-          ),
-        ),
-      ),
-    );
+  static List<Widget> _corners() {
+    const s = 26.0, bw = 3.5, c = AppColors.mint, r = Radius.circular(8);
 
     return [
-      corner(Alignment.topLeft,     const BorderRadius.only(topLeft:     r)),
-      corner(Alignment.topRight,    const BorderRadius.only(topRight:    r)),
-      corner(Alignment.bottomLeft,  const BorderRadius.only(bottomLeft:  r)),
-      corner(Alignment.bottomRight, const BorderRadius.only(bottomRight: r)),
+      Positioned(top: -2, left: -2, child: Container(width: s, height: s, decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: c, width: bw), left: BorderSide(color: c, width: bw)),
+        borderRadius: BorderRadius.only(topLeft: r),
+      ))),
+      Positioned(top: -2, right: -2, child: Container(width: s, height: s, decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: c, width: bw), right: BorderSide(color: c, width: bw)),
+        borderRadius: BorderRadius.only(topRight: r),
+      ))),
+      Positioned(bottom: -2, left: -2, child: Container(width: s, height: s, decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: c, width: bw), left: BorderSide(color: c, width: bw)),
+        borderRadius: BorderRadius.only(bottomLeft: r),
+      ))),
+      Positioned(bottom: -2, right: -2, child: Container(width: s, height: s, decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: c, width: bw), right: BorderSide(color: c, width: bw)),
+        borderRadius: BorderRadius.only(bottomRight: r),
+      ))),
     ];
   }
 }
@@ -299,26 +273,18 @@ class _DetectOverlay extends StatelessWidget {
 class _CamHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<ScanViewModel>();
-    final n  = vm.pages.length;
-    final text = n > 0
-        ? '$n hoja(s) capturada(s) · sigue tomando o pulsa Listo'
-        : 'Toca el obturador para capturar cada hoja';
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(30),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.lightbulb_outline_rounded, color: AppColors.mint, size: 14),
-          const SizedBox(width: 7),
-          Flexible(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))),
-        ],
-      ),
+      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.lightbulb_outline_rounded, color: AppColors.mint, size: 14),
+        SizedBox(width: 7),
+        Text('Toca el botón para escanear el documento',
+            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
     );
   }
 }
@@ -333,211 +299,167 @@ class _CamControls extends StatefulWidget {
 }
 
 class _CamControlsState extends State<_CamControls> {
-  bool _flashing = false;
+  bool _scanning = false;
 
   @override
   Widget build(BuildContext context) {
-    final vm       = context.watch<ScanViewModel>();
-    final n        = vm.pages.length;
-    final hasPages = n > 0;
-    final botPad   = MediaQuery.of(context).padding.bottom;
+    final vm     = context.watch<ScanViewModel>();
+    final botPad = MediaQuery.of(context).padding.bottom;
 
     return Container(
       color: AppColors.dark,
       padding: EdgeInsets.fromLTRB(0, 18, 0, 30 + botPad),
-      child: Column(
-        children: [
-          // Mode pills
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: ScanViewModel.modes.map((m) {
-                final active = vm.mode == m;
-                return GestureDetector(
-                  onTap: () {
-                    context.read<ScanViewModel>().setMode(m);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 22),
-                    child: Column(
-                      children: [
-                        Text(
-                          m,
-                          style: TextStyle(
-                            color: active ? AppColors.mint : Colors.white.withValues(alpha: 0.5),
-                            fontSize: 13, fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          width: 5, height: 5,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: active ? AppColors.mint : Colors.transparent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Shutter row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Stack preview button
-                GestureDetector(
-                  onTap: hasPages ? () => _finish(context) : null,
-                  child: SizedBox(
-                    width: 52, height: 52,
-                    child: hasPages
-                        ? Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.white, width: 2),
-                                    boxShadow: [
-                                      const BoxShadow(color: Colors.white, offset: Offset(4, -4), blurRadius: 0, spreadRadius: -1),
-                                      const BoxShadow(color: Color(0x66FFFFFF), offset: Offset(7, -7), blurRadius: 0, spreadRadius: -2),
-                                    ],
-                                  ),
-                                  width: 46, height: 54,
-                                  child: const PageThumbnail(kind: 'contract', filter: FilterType.original),
-                                ),
-                              ),
-                              Positioned(
-                                top: -6, right: -6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.green,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.dark, width: 2),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text('$n', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Container(
-                            width: 48, height: 48,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(13),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-                              color: AppColors.dark3,
-                            ),
-                            child: const Icon(Icons.image_outlined, color: Colors.white, size: 20),
-                          ),
-                  ),
-                ),
-
-                // Shutter
-                GestureDetector(
-                  onTap: () => _capture(context),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 74, height: 74,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 5),
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+      child: Column(children: [
+        // Mode pills
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: ScanViewModel.modes.map((m) {
+              final active = vm.mode == m;
+              return GestureDetector(
+                onTap: () => context.read<ScanViewModel>().setMode(m),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 22),
+                  child: Column(children: [
+                    Text(m, style: TextStyle(
+                      color: active ? AppColors.mint : Colors.white.withValues(alpha: 0.5),
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                    )),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 5, height: 5,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _flashing ? AppColors.mint : Colors.white,
+                        color: active ? AppColors.mint : Colors.transparent,
                       ),
                     ),
-                  ),
+                  ]),
                 ),
-
-                // Done button
-                GestureDetector(
-                  onTap: hasPages ? () => _finish(context) : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: hasPages
-                          ? const LinearGradient(colors: [AppColors.mint, AppColors.green])
-                          : null,
-                      color: hasPages ? null : Colors.white.withValues(alpha: 0.12),
-                      boxShadow: hasPages
-                          ? [const BoxShadow(color: Color(0x66059669), blurRadius: 18, offset: Offset(0, 8))]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          hasPages ? 'Listo · $n' : 'Listo',
-                          style: TextStyle(
-                            color: hasPages ? Colors.white : Colors.white.withValues(alpha: 0.4),
-                            fontSize: 13, fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+        // Shutter row
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Gallery import
+              GestureDetector(
+                onTap: _scanning ? null : () => _startScan(context, fromGallery: true),
+                child: Container(
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                    color: AppColors.dark3,
+                  ),
+                  child: const Icon(Icons.photo_library_outlined, color: Colors.white, size: 22),
+                ),
+              ),
+
+              // Shutter button
+              GestureDetector(
+                onTap: _scanning ? null : () => _startScan(context),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 74, height: 74,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _scanning
+                          ? AppColors.mint.withValues(alpha: 0.6)
+                          : Colors.white.withValues(alpha: 0.85),
+                      width: 5,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _scanning ? AppColors.mint : Colors.white,
+                    ),
+                    child: _scanning
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.dark),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+
+              // Done / placeholder
+              Container(
+                height: 52, width: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+                child: const Icon(Icons.check_rounded, color: AppColors.mint, size: 22),
+              ),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 
-  Future<void> _capture(BuildContext context) async {
-    setState(() => _flashing = true);
-    HapticFeedback.lightImpact();
-    final vm        = context.read<ScanViewModel>();
+  Future<void> _startScan(BuildContext context, {bool fromGallery = false}) async {
+    // Capture context-dependent objects before any await
     final messenger = ScaffoldMessenger.of(context);
-    vm.captureShot();
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-    setState(() => _flashing = false);
-    final n = vm.pages.length;
-    messenger.clearSnackBars();
-    messenger.showSnackBar(SnackBar(
-      content: Row(children: [
-        const Icon(Icons.check_circle, color: AppColors.mint, size: 16),
-        const SizedBox(width: 9),
-        Text('Hoja $n añadida', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-      ]),
-      backgroundColor: AppColors.ink,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-      duration: const Duration(milliseconds: 1900),
-      margin: const EdgeInsets.fromLTRB(36, 0, 36, 110),
-      elevation: 12,
-    ));
-  }
+    final vm        = context.read<ScanViewModel>();
+    final nav       = Navigator.of(context);
 
-  void _finish(BuildContext context) {
-    final vm = context.read<ScanViewModel>();
-    if (vm.pages.isEmpty) {
-      showAppToast(context, 'Captura al menos una hoja');
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      if (!mounted) return;
+      messenger.clearSnackBars();
+      messenger.showSnackBar(_buildSnack('Se requiere permiso de cámara'));
       return;
     }
-    Navigator.push(context, _cropRoute());
+
+    setState(() => _scanning = true);
+    try {
+      final pictures = await CunningDocumentScanner.getPictures(
+        noOfPages: 20,
+        isGalleryImportAllowed: fromGallery,
+      );
+
+      if (pictures == null || pictures.isEmpty) return;
+      if (!mounted) return;
+
+      vm.setImagePaths(pictures);
+      nav.push(_cropRoute());
+    } catch (e) {
+      if (!mounted) return;
+      messenger.clearSnackBars();
+      messenger.showSnackBar(_buildSnack('Error al escanear: $e'));
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
   }
+
+  SnackBar _buildSnack(String msg) => SnackBar(
+    content: Row(children: [
+      const Icon(Icons.check_circle, color: AppColors.mint, size: 16),
+      const SizedBox(width: 9),
+      Flexible(child: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13))),
+    ]),
+    backgroundColor: AppColors.ink,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+    duration: const Duration(milliseconds: 1900),
+    margin: const EdgeInsets.fromLTRB(36, 0, 36, 110),
+  );
 }
+
+// ─── Route helper ─────────────────────────────────────────────────────────────
 
 PageRouteBuilder _cropRoute() => PageRouteBuilder(
   pageBuilder: (c, a, sa) => const CropScreen(),

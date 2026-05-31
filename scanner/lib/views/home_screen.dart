@@ -23,19 +23,24 @@ class HomeScreen extends StatelessWidget {
         body: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _HeaderSection(),
-                    const _SectionHeader(),
-                    const _DocumentGrid(),
-                    const SizedBox(height: 24),
-                  ],
+              child: RefreshIndicator(
+                color: AppColors.green,
+                onRefresh: () => context.read<HomeViewModel>().refresh(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HeaderSection(),
+                      const _SectionHeader(),
+                      const _DocumentGrid(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ),
-            _BottomNav(),
+            const _BottomNav(),
           ],
         ),
       ),
@@ -46,7 +51,7 @@ class HomeScreen extends StatelessWidget {
 // ─── Header + Quick Actions ──────────────────────────────────────────────────
 
 class _HeaderSection extends StatelessWidget {
-  // Quick action row height ≈ 101px, overlap = 34px → spacer = 67px
+  // quick action row height ≈ 101px, overlap = 34px → spacer = 67
   static const _spacer = 67.0;
 
   @override
@@ -54,15 +59,12 @@ class _HeaderSection extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Column(
-          children: [
-            _GradientHeader(),
-            const SizedBox(height: _spacer),
-          ],
-        ),
+        Column(children: [
+          _GradientHeader(),
+          const SizedBox(height: _spacer),
+        ]),
         Positioned(
-          bottom: 0,
-          left: 22, right: 22,
+          bottom: 0, left: 22, right: 22,
           child: _QuickActionsRow(),
         ),
       ],
@@ -74,7 +76,7 @@ class _GradientHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
-    final vm = context.watch<HomeViewModel>();
+    final vm     = context.watch<HomeViewModel>();
 
     return Container(
       decoration: const BoxDecoration(
@@ -105,46 +107,37 @@ class _GradientHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Brand row
-                Row(
-                  children: [
-                    Container(
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(11),
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                    child: const Icon(Icons.document_scanner_outlined, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('DocScan',
+                      style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => showAppToast(context, 'Sin notificaciones nuevas'),
+                    child: Container(
                       width: 38, height: 38,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(11),
-                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white.withValues(alpha: 0.16),
                       ),
-                      child: const Icon(Icons.document_scanner_outlined, color: Colors.white, size: 22),
+                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
                     ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'DocScan',
-                      style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => showAppToast(context, 'Sin notificaciones nuevas'),
-                      child: Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.white.withValues(alpha: 0.16),
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ]),
                 const SizedBox(height: 22),
-                // Greeting
-                const Text(
-                  'Escanea lo que sea,\nal instante',
-                  style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -0.5, height: 1.15),
-                ),
+                const Text('Escanea lo que sea,\nal instante',
+                    style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -0.5, height: 1.15)),
                 const SizedBox(height: 4),
-                Text(
-                  'Toca el botón verde para empezar a escanear',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13.5, fontWeight: FontWeight.w500),
-                ),
+                Text('Toca el botón verde para empezar a escanear',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13.5, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 18),
                 // Search bar
                 Container(
@@ -154,27 +147,25 @@ class _GradientHeader extends StatelessWidget {
                     boxShadow: const [BoxShadow(color: Color(0x2E04503C), blurRadius: 20, offset: Offset(0, 8))],
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search_rounded, color: AppColors.slateL, size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          onChanged: context.read<HomeViewModel>().setQuery,
-                          style: const TextStyle(fontSize: 14, color: AppColors.ink),
-                          decoration: const InputDecoration.collapsed(
-                            hintText: 'Buscar documentos…',
-                            hintStyle: TextStyle(color: AppColors.slateL),
-                          ),
+                  child: Row(children: [
+                    const Icon(Icons.search_rounded, color: AppColors.slateL, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        onChanged: context.read<HomeViewModel>().setQuery,
+                        style: const TextStyle(fontSize: 14, color: AppColors.ink),
+                        decoration: const InputDecoration.collapsed(
+                          hintText: 'Buscar documentos…',
+                          hintStyle: TextStyle(color: AppColors.slateL),
                         ),
                       ),
-                      if (vm.query.isNotEmpty)
-                        GestureDetector(
-                          onTap: () => context.read<HomeViewModel>().setQuery(''),
-                          child: const Icon(Icons.close_rounded, color: AppColors.slateL, size: 18),
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (vm.query.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => context.read<HomeViewModel>().setQuery(''),
+                        child: const Icon(Icons.close_rounded, color: AppColors.slateL, size: 18),
+                      ),
+                  ]),
                 ),
               ],
             ),
@@ -188,36 +179,22 @@ class _GradientHeader extends StatelessWidget {
 class _QuickActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _QA(
-          icon: Icons.photo_camera_outlined,
-          label: 'Escanear',
-          bgColor: AppColors.tint,
-          iconColor: AppColors.green,
-          onTap: () => _goCamera(context, 'Documento'),
-        ),
-        const SizedBox(width: 11),
-        _QA(
-          icon: Icons.image_outlined,
-          label: 'Importar',
-          bgColor: const Color(0xFFe0f2fe),
-          iconColor: const Color(0xFF0284c7),
-          onTap: () => showAppToast(context, 'Importar imagen'),
-        ),
-        const SizedBox(width: 11),
-        _QA(
-          icon: Icons.description_outlined,
-          label: 'Crear PDF',
-          bgColor: const Color(0xFFf3e8ff),
-          iconColor: const Color(0xFF7c3aed),
-          onTap: () => _goCamera(context, 'Documento'),
-        ),
-      ],
-    );
+    return Row(children: [
+      _QA(icon: Icons.photo_camera_outlined, label: 'Escanear',
+          bg: AppColors.tint, fg: AppColors.green,
+          onTap: () => _goScan(context, 'Documento')),
+      const SizedBox(width: 11),
+      _QA(icon: Icons.image_outlined, label: 'Importar',
+          bg: const Color(0xFFe0f2fe), fg: const Color(0xFF0284c7),
+          onTap: () => _goScan(context, 'Galería')),
+      const SizedBox(width: 11),
+      _QA(icon: Icons.description_outlined, label: 'Crear PDF',
+          bg: const Color(0xFFf3e8ff), fg: const Color(0xFF7c3aed),
+          onTap: () => _goScan(context, 'Documento')),
+    ]);
   }
 
-  void _goCamera(BuildContext ctx, String mode) {
+  void _goScan(BuildContext ctx, String mode) {
     ctx.read<ScanViewModel>().startScan(newMode: mode);
     Navigator.push(ctx, _route(const CameraScreen()));
   }
@@ -226,39 +203,33 @@ class _QuickActionsRow extends StatelessWidget {
 class _QA extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color bgColor;
-  final Color iconColor;
+  final Color bg, fg;
   final VoidCallback onTap;
-
-  const _QA({required this.icon, required this.label, required this.bgColor, required this.iconColor, required this.onTap});
+  const _QA({required this.icon, required this.label, required this.bg, required this.fg, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 15, 8, 13),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 4))],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 46, height: 46,
-                decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14)),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(height: 9),
-              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink)),
-            ],
-          ),
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 15, 8, 13),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 4))],
         ),
+        child: Column(children: [
+          Container(
+            width: 46, height: 46,
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: fg, size: 24),
+          ),
+          const SizedBox(height: 9),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink)),
+        ]),
       ),
-    );
-  }
+    ),
+  );
 }
 
 // ─── Section header ──────────────────────────────────────────────────────────
@@ -267,21 +238,21 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader();
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text('Recientes', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-          GestureDetector(
-            onTap: () => showAppToast(context, 'Mostrando todos los documentos'),
-            child: const Text('Ver todo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.green)),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(22, 26, 22, 12),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text('Recientes',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+        GestureDetector(
+          onTap: () => showAppToast(context, 'Mostrando todos los documentos'),
+          child: const Text('Ver todo',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.green)),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─── Document grid ───────────────────────────────────────────────────────────
@@ -315,7 +286,8 @@ class _DocumentGrid extends StatelessWidget {
 
   void _openDoc(BuildContext ctx, Document doc) {
     ctx.read<ScanViewModel>().loadDocument(
-      List.generate(doc.pages, (i) => doc.kind),
+      kinds: List.generate(doc.pages, (_) => doc.kind),
+      existingPdfPath: doc.pdfPath,
     );
     Navigator.push(ctx, _route(const PdfScreen()));
   }
@@ -324,62 +296,65 @@ class _DocumentGrid extends StatelessWidget {
 // ─── Bottom nav ──────────────────────────────────────────────────────────────
 
 class _BottomNav extends StatelessWidget {
+  const _BottomNav();
+
   @override
   Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final botPad = MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      padding: EdgeInsets.fromLTRB(30, 11, 30, 26 + bottomPad),
+      padding: EdgeInsets.fromLTRB(0, 11, 0, botPad),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Inicio
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.home_outlined, size: 22, color: AppColors.green),
-              SizedBox(height: 4),
-              Text('Inicio', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.green)),
-            ],
+          Expanded(
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: const [
+                Icon(Icons.home_rounded, size: 22, color: AppColors.green),
+                SizedBox(height: 4),
+                Text('Inicio', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.green)),
+                SizedBox(height: 26),
+              ]),
+            ),
           ),
-          // FAB
+          // FAB camera button (elevated above nav)
           GestureDetector(
             onTap: () {
               context.read<ScanViewModel>().startScan();
               Navigator.push(context, _route(const CameraScreen()));
             },
-            child: Transform.translate(
-              offset: const Offset(0, -34),
-              child: Container(
-                width: 62, height: 62,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(21),
-                  gradient: const LinearGradient(
-                    begin: Alignment(-1, -1),
-                    end: Alignment(1, 1),
-                    colors: [AppColors.mint, AppColors.green, AppColors.greenD],
-                  ),
-                  boxShadow: const [BoxShadow(color: Color(0x6A059669), blurRadius: 24, offset: Offset(0, 12))],
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              width: 62, height: 62,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(21),
+                gradient: const LinearGradient(
+                  begin: Alignment(-1, -1),
+                  end: Alignment(1, 1),
+                  colors: [AppColors.mint, AppColors.green, AppColors.greenD],
                 ),
-                child: const Icon(Icons.photo_camera_outlined, color: Colors.white, size: 28),
+                boxShadow: const [BoxShadow(color: Color(0x6A059669), blurRadius: 24, offset: Offset(0, 12))],
               ),
+              child: const Icon(Icons.photo_camera_outlined, color: Colors.white, size: 28),
             ),
           ),
           // Archivos
-          GestureDetector(
-            onTap: () => showAppToast(context, 'Mostrando tus archivos'),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.folder_outlined, size: 22, color: AppColors.slateL),
-                SizedBox(height: 4),
-                Text('Archivos', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.slateL)),
-              ],
+          Expanded(
+            child: GestureDetector(
+              onTap: () => showAppToast(context, 'Mostrando tus archivos'),
+              child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: const [
+                  Icon(Icons.folder_outlined, size: 22, color: AppColors.slateL),
+                  SizedBox(height: 4),
+                  Text('Archivos', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.slateL)),
+                  SizedBox(height: 26),
+                ]),
+              ),
             ),
           ),
         ],
@@ -388,7 +363,7 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-// ─── Shared route helper ─────────────────────────────────────────────────────
+// ─── Route helper ────────────────────────────────────────────────────────────
 
 PageRouteBuilder _route(Widget page) => PageRouteBuilder(
   pageBuilder: (c, a, sa) => page,
