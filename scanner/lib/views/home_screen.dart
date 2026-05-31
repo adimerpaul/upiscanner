@@ -341,7 +341,7 @@ class _SectionHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text(
-          'Recientes',
+          'Mis documentos',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -349,9 +349,9 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => showAppToast(context, 'Mostrando todos los documentos'),
+          onTap: () => context.read<HomeViewModel>().refresh(),
           child: const Text(
-            'Ver todo',
+            'Actualizar',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -372,6 +372,10 @@ class _DocumentGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final docs = context.watch<HomeViewModel>().documents;
+
+    if (docs.isEmpty) {
+      return const _EmptyDocuments();
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -394,13 +398,86 @@ class _DocumentGrid extends StatelessWidget {
   void _openDoc(BuildContext ctx, Document doc) {
     ctx.read<ScanViewModel>().loadDocument(
       kinds: List.generate(doc.pages, (_) => doc.kind),
+      existingId: doc.id,
+      existingTitle: doc.title,
       existingPdfPath: doc.pdfPath,
+      existingImagePaths: doc.imagePaths,
     );
     Navigator.push(ctx, _route(const PdfScreen()));
   }
 }
 
 // ─── Bottom nav ──────────────────────────────────────────────────────────────
+
+class _EmptyDocuments extends StatelessWidget {
+  const _EmptyDocuments();
+
+  @override
+  Widget build(BuildContext context) {
+    final hasQuery = context.watch<HomeViewModel>().query.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 26, 20, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 14,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppColors.tint,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.folder_open_rounded,
+                color: AppColors.green,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              hasQuery ? 'Sin resultados' : 'Aun no hay archivos escaneados',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasQuery
+                  ? 'Prueba con otro nombre de documento.'
+                  : 'Cuando guardes un escaneo, aparecera aqui con su miniatura real.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: AppColors.slate,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _BottomNav extends StatelessWidget {
   const _BottomNav();

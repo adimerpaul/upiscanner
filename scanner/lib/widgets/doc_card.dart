@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import '../models/document.dart';
 import '../core/app_colors.dart';
 import 'page_thumbnail.dart';
@@ -19,7 +22,13 @@ class DocCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFeef2f3)),
-          boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 4))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 14,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         padding: const EdgeInsets.all(10),
         child: Column(
@@ -36,21 +45,29 @@ class DocCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         border: Border.all(color: const Color(0xFFeef2f3)),
                       ),
-                      child: PageThumbnail(kind: doc.kind, filter: FilterType.original),
+                      child: _DocumentPreview(doc: doc),
                     ),
                   ),
                 ),
                 Positioned(
-                  top: 7, right: 7,
+                  top: 7,
+                  right: 7,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xC60f172a),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '${doc.pages} pág',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -61,17 +78,30 @@ class DocCard extends StatelessWidget {
               doc.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: -0.2, height: 1.25),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                height: 1.25,
+              ),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.access_time_rounded, size: 11, color: AppColors.slateL),
+                const Icon(
+                  Icons.access_time_rounded,
+                  size: 11,
+                  color: AppColors.slateL,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     doc.date,
-                    style: const TextStyle(fontSize: 11, color: AppColors.slateL, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.slateL,
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -80,6 +110,28 @@ class DocCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DocumentPreview extends StatelessWidget {
+  final Document doc;
+
+  const _DocumentPreview({required this.doc});
+
+  @override
+  Widget build(BuildContext context) {
+    final path = doc.thumbnailPath;
+    if (path == null || path.isEmpty) {
+      return PageThumbnail(kind: doc.kind, filter: FilterType.original);
+    }
+
+    return Image.file(
+      File(path),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) {
+        return PageThumbnail(kind: doc.kind, filter: FilterType.original);
+      },
     );
   }
 }

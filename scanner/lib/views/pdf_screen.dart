@@ -16,6 +16,7 @@ import '../services/pdf_service.dart';
 import '../services/database_service.dart';
 import '../core/filter_utils.dart';
 import 'camera_screen.dart';
+import 'crop_screen.dart';
 
 class PdfScreen extends StatefulWidget {
   const PdfScreen({super.key});
@@ -40,7 +41,8 @@ class _PdfScreenState extends State<PdfScreen> {
     try {
       final path = await PdfService.generate(
         imagePaths: vm.imagePaths,
-        title:      vm.pdfTitle,
+        title: vm.pdfTitle,
+        filter: vm.filter,
       );
       if (mounted) vm.setPdfPath(path);
     } catch (e) {
@@ -58,12 +60,14 @@ class _PdfScreenState extends State<PdfScreen> {
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: Column(children: [
-          _PdfTopBar(title: vm.pdfTitle, subtitle: vm.pdfSubtitle()),
-          Expanded(child: _PdfBody(vm: vm)),
-          _PdfThumbs(vm: vm),
-          _PdfActions(vm: vm),
-        ]),
+        body: Column(
+          children: [
+            _PdfTopBar(title: vm.pdfTitle, subtitle: vm.pdfSubtitle()),
+            Expanded(child: _PdfBody(vm: vm)),
+            _PdfThumbs(vm: vm),
+            _PdfActions(vm: vm),
+          ],
+        ),
       ),
     );
   }
@@ -84,31 +88,76 @@ class _PdfTopBar extends StatelessWidget {
         border: Border(bottom: BorderSide(color: AppColors.line)),
       ),
       padding: EdgeInsets.fromLTRB(18, topPad + 14, 18, 14),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xFFf1f5f4)),
-            child: const Icon(Icons.chevron_left_rounded, color: AppColors.ink, size: 22),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFf1f5f4),
+              ),
+              child: const Icon(
+                Icons.chevron_left_rounded,
+                color: AppColors.ink,
+                size: 22,
+              ),
+            ),
           ),
-        ),
-        Expanded(
-          child: Column(children: [
-            Text(title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(subtitle,
-                style: const TextStyle(fontSize: 11, color: AppColors.slateL, fontWeight: FontWeight.w600)),
-          ]),
-        ),
-        Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xFFf1f5f4)),
-          child: const Icon(Icons.more_horiz_rounded, color: AppColors.ink, size: 20),
-        ),
-      ]),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.slateL,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _editPdf(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFf1f5f4),
+              ),
+              child: const Icon(
+                Icons.edit_outlined,
+                color: AppColors.ink,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _editPdf(BuildContext context) {
+    final vm = context.read<ScanViewModel>();
+    if (!vm.hasRealImages) {
+      showAppToast(context, 'Este PDF no tiene imagen original para editar');
+      return;
+    }
+    Navigator.push(context, _cropRoute());
   }
 }
 
@@ -121,7 +170,7 @@ class _PdfBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pages = vm.pages.isEmpty ? ['contract'] : vm.pages;
-    final n     = pages.length;
+    final n = pages.length;
 
     return Container(
       color: const Color(0xFFe7ecec),
@@ -130,23 +179,32 @@ class _PdfBody extends StatelessWidget {
         children: [
           // Info pills
           Wrap(
-            spacing: 8, runSpacing: 8,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _Pill(icon: Icons.check_rounded, text: 'Recorte aplicado'),
               _Pill(icon: Icons.check_rounded, text: '$n hoja(s) en 1 archivo'),
-              if (vm.generatingPdf) _Pill(icon: Icons.hourglass_top_rounded, text: 'Generando PDF…'),
-              if (vm.pdfPath != null) _Pill(icon: Icons.picture_as_pdf_rounded, text: 'PDF listo'),
+              if (vm.generatingPdf)
+                _Pill(
+                  icon: Icons.hourglass_top_rounded,
+                  text: 'Generando PDF…',
+                ),
+              if (vm.pdfPath != null)
+                _Pill(icon: Icons.picture_as_pdf_rounded, text: 'PDF listo'),
             ],
           ),
           const SizedBox(height: 16),
           // Pages
-          ...List.generate(n, (i) => _PdfPage(
-            kind:      pages[i],
-            filter:    vm.filter,
-            imagePath: vm.hasRealImages ? vm.imagePaths[i] : null,
-            pageNum:   i + 1,
-            total:     n,
-          )),
+          ...List.generate(
+            n,
+            (i) => _PdfPage(
+              kind: pages[i],
+              filter: vm.filter,
+              imagePath: vm.hasRealImages ? vm.imagePaths[i] : null,
+              pageNum: i + 1,
+              total: n,
+            ),
+          ),
         ],
       ),
     );
@@ -166,11 +224,21 @@ class _Pill extends StatelessWidget {
       border: Border.all(color: AppColors.line),
       borderRadius: BorderRadius.circular(30),
     ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: AppColors.green, size: 13),
-      const SizedBox(width: 6),
-      Text(text, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.slate)),
-    ]),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppColors.green, size: 13),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.slate,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -197,7 +265,8 @@ class _PdfPage extends StatelessWidget {
         child: Image.file(
           File(imagePath!),
           fit: BoxFit.contain,
-          errorBuilder: (ctx, err, stk) => PageThumbnail(kind: kind, filter: filter),
+          errorBuilder: (ctx, err, stk) =>
+              PageThumbnail(kind: kind, filter: filter),
         ),
       );
     } else {
@@ -206,33 +275,48 @@ class _PdfPage extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Stack(children: [
-        AspectRatio(
-          aspectRatio: 1 / 1.35,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.16), blurRadius: 34, offset: const Offset(0, 14))],
+      child: Stack(
+        children: [
+          AspectRatio(
+            aspectRatio: 1 / 1.35,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.16),
+                      blurRadius: 34,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: content,
               ),
-              child: content,
             ),
           ),
-        ),
-        Positioned(
-          bottom: 8, right: 10,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0x990f172a),
-              borderRadius: BorderRadius.circular(10),
+          Positioned(
+            bottom: 8,
+            right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0x990f172a),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$pageNum / $total',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-            child: Text('$pageNum / $total',
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -261,34 +345,54 @@ class _PdfThumbs extends StatelessWidget {
             final path = vm.hasRealImages ? vm.imagePaths[i] : null;
             return Padding(
               padding: const EdgeInsets.only(right: 10),
-              child: Stack(alignment: Alignment.bottomCenter, children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(7),
-                  child: Container(
-                    width: 46, height: 60,
-                    decoration: BoxDecoration(border: Border.all(color: AppColors.green, width: 2)),
-                    child: path != null
-                        ? ColorFiltered(
-                            colorFilter: filterMatrix(vm.filter),
-                            child: Image.file(File(path), fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stk) => PageThumbnail(kind: pages[i], filter: vm.filter),
-                            ),
-                          )
-                        : PageThumbnail(kind: pages[i], filter: vm.filter),
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: Container(
+                      width: 46,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.green, width: 2),
+                      ),
+                      child: path != null
+                          ? ColorFiltered(
+                              colorFilter: filterMatrix(vm.filter),
+                              child: Image.file(
+                                File(path),
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stk) => PageThumbnail(
+                                  kind: pages[i],
+                                  filter: vm.filter,
+                                ),
+                              ),
+                            )
+                          : PageThumbnail(kind: pages[i], filter: vm.filter),
+                    ),
                   ),
-                ),
-                Container(
-                  width: 46,
-                  decoration: const BoxDecoration(
-                    color: AppColors.green,
-                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(5), bottomRight: Radius.circular(5)),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 1),
-                  child: Text('${i + 1}',
+                  Container(
+                    width: 46,
+                    decoration: const BoxDecoration(
+                      color: AppColors.green,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(5),
+                        bottomRight: Radius.circular(5),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Text(
+                      '${i + 1}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
-                ),
-              ]),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           }),
           // Add page
@@ -298,13 +402,18 @@ class _PdfThumbs extends StatelessWidget {
               Navigator.push(context, _camRoute());
             },
             child: Container(
-              width: 46, height: 60,
+              width: 46,
+              height: 60,
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.slateL, width: 2),
                 borderRadius: BorderRadius.circular(7),
                 color: AppColors.paper,
               ),
-              child: const Icon(Icons.add_rounded, color: AppColors.slateL, size: 18),
+              child: const Icon(
+                Icons.add_rounded,
+                color: AppColors.slateL,
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -336,38 +445,62 @@ class _PdfActionsState extends State<_PdfActions> {
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
       padding: EdgeInsets.fromLTRB(22, 12, 22, 30 + botPad),
-      child: Row(children: [
-        _ActionIcon(
-          icon: Icons.text_fields_rounded,
-          label: 'OCR',
-          onTap: () => showAppToast(context, 'Texto reconocido (OCR)'),
-        ),
-        const SizedBox(width: 8),
-        _ActionIcon(
-          icon: _saving ? Icons.hourglass_top_rounded : Icons.save_outlined,
-          label: 'Guardar',
-          onTap: _saving ? null : _saveDoc,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _showShareSheet(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(colors: [AppColors.mint, AppColors.green, AppColors.greenD]),
-                boxShadow: const [BoxShadow(color: Color(0x61059669), blurRadius: 22, offset: Offset(0, 10))],
+      child: Row(
+        children: [
+          _ActionIcon(
+            icon: Icons.text_fields_rounded,
+            label: 'OCR',
+            onTap: () => showAppToast(context, 'Texto reconocido (OCR)'),
+          ),
+          const SizedBox(width: 8),
+          _ActionIcon(
+            icon: _saving ? Icons.hourglass_top_rounded : Icons.save_outlined,
+            label: 'Guardar',
+            onTap: _saving ? null : _saveDoc,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _showShareSheet(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.mint, AppColors.green, AppColors.greenD],
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x61059669),
+                      blurRadius: 22,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.ios_share_rounded,
+                      color: Colors.white,
+                      size: 19,
+                    ),
+                    SizedBox(width: 9),
+                    Text(
+                      'Compartir',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.ios_share_rounded, color: Colors.white, size: 19),
-                SizedBox(width: 9),
-                Text('Compartir', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
-              ]),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -386,13 +519,27 @@ class _PdfActionsState extends State<_PdfActions> {
         await Gal.putImage(vm.imagePaths.first);
       }
 
-      // Save record to database
-      await DatabaseService.instance.insertDoc(
-        title:         vm.pdfTitle,
-        pageCount:     vm.pages.length,
-        pdfPath:       vm.pdfPath ?? '',
-        thumbnailPath: vm.imagePaths.isNotEmpty ? vm.imagePaths.first : null,
-      );
+      final docId = int.tryParse(vm.documentId ?? '');
+      if (docId == null) {
+        final id = await DatabaseService.instance.insertDoc(
+          title: vm.pdfTitle,
+          pageCount: vm.pages.length,
+          pdfPath: vm.pdfPath ?? '',
+          thumbnailPath: vm.imagePaths.isNotEmpty ? vm.imagePaths.first : null,
+          imagePaths: vm.imagePaths,
+        );
+        vm.documentId = id.toString();
+        vm.documentTitle = vm.pdfTitle;
+      } else {
+        await DatabaseService.instance.updateDoc(
+          id: docId,
+          title: vm.pdfTitle,
+          pageCount: vm.pages.length,
+          pdfPath: vm.pdfPath ?? '',
+          thumbnailPath: vm.imagePaths.isNotEmpty ? vm.imagePaths.first : null,
+          imagePaths: vm.imagePaths,
+        );
+      }
 
       if (mounted) {
         context.read<HomeViewModel>().refresh();
@@ -410,9 +557,9 @@ class _PdfActionsState extends State<_PdfActions> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ShareSheet(
-        title:   widget.vm.pdfTitle,
+        title: widget.vm.pdfTitle,
         pdfPath: widget.vm.pdfPath,
-        vm:      widget.vm,
+        vm: widget.vm,
       ),
     );
   }
@@ -428,17 +575,28 @@ class _ActionIcon extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 50, height: 50,
+      width: 50,
+      height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: AppColors.line, width: 1.5),
         color: Colors.white,
       ),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: AppColors.slate, size: 20),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w700, color: AppColors.slate)),
-      ]),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: AppColors.slate, size: 20),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.slate,
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -450,7 +608,11 @@ class _ShareSheet extends StatelessWidget {
   final String? pdfPath;
   final ScanViewModel vm;
 
-  const _ShareSheet({required this.title, required this.pdfPath, required this.vm});
+  const _ShareSheet({
+    required this.title,
+    required this.pdfPath,
+    required this.vm,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -460,67 +622,125 @@ class _ShareSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 32),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Grab bar
-        Container(
-          width: 40, height: 5,
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(color: const Color(0xFFdfe5e6), borderRadius: BorderRadius.circular(3)),
-        ),
-        // Success banner
-        Container(
-          padding: const EdgeInsets.all(13),
-          margin: const EdgeInsets.only(bottom: 18),
-          decoration: BoxDecoration(color: AppColors.tint, borderRadius: BorderRadius.circular(16)),
-          child: Row(children: [
-            Container(
-              width: 38, height: 38,
-              decoration: const BoxDecoration(color: AppColors.green, shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Grab bar
+          Container(
+            width: 40,
+            height: 5,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFdfe5e6),
+              borderRadius: BorderRadius.circular(3),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('¡PDF creado!', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                Text('$title · listo para compartir',
-                    style: const TextStyle(fontSize: 12, color: AppColors.slate, fontWeight: FontWeight.w600)),
-              ]),
-            ),
-          ]),
-        ),
-        // Share grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, childAspectRatio: 1.0, crossAxisSpacing: 8, mainAxisSpacing: 16,
           ),
-          itemCount: ShareTarget.all.length,
-          itemBuilder: (ctx, i) {
-            final t = ShareTarget.all[i];
-            return GestureDetector(
-              onTap: () => _share(context, ctx, t.label),
-              child: Column(children: [
+          // Success banner
+          Container(
+            padding: const EdgeInsets.all(13),
+            margin: const EdgeInsets.only(bottom: 18),
+            decoration: BoxDecoration(
+              color: AppColors.tint,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
                 Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    color: t.color,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [BoxShadow(color: t.color.withValues(alpha: 0.4), blurRadius: 14, offset: const Offset(0, 4))],
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: AppColors.green,
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(t.icon, color: Colors.white, size: 26),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(t.label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.slate)),
-              ]),
-            );
-          },
-        ),
-      ]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '¡PDF creado!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '$title · listo para compartir',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.slate,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Share grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 1.0,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: ShareTarget.all.length,
+            itemBuilder: (ctx, i) {
+              final t = ShareTarget.all[i];
+              return GestureDetector(
+                onTap: () => _share(context, ctx, t.label),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: t.color,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: t.color.withValues(alpha: 0.4),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(t.icon, color: Colors.white, size: 26),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      t.label,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _share(BuildContext outerCtx, BuildContext sheetCtx, String target) async {
+  Future<void> _share(
+    BuildContext outerCtx,
+    BuildContext sheetCtx,
+    String target,
+  ) async {
     Navigator.pop(sheetCtx);
 
     if (pdfPath != null) {
@@ -544,8 +764,25 @@ PageRouteBuilder _camRoute() => PageRouteBuilder(
   transitionsBuilder: (c, anim, sa, child) => FadeTransition(
     opacity: anim,
     child: SlideTransition(
-      position: Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero)
-          .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+      position: Tween<Offset>(
+        begin: const Offset(0.06, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+      child: child,
+    ),
+  ),
+  transitionDuration: const Duration(milliseconds: 320),
+);
+
+PageRouteBuilder _cropRoute() => PageRouteBuilder(
+  pageBuilder: (c, a, sa) => const CropScreen(),
+  transitionsBuilder: (c, anim, sa, child) => FadeTransition(
+    opacity: anim,
+    child: SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.06, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
       child: child,
     ),
   ),
